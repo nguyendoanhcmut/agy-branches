@@ -111,6 +111,57 @@ const CANONICAL_MAPS = [
   }
 ];
 
+const COBOC_MAPS = [
+  {
+    input: 'C:/antgravity workplace/coboc_output/coboc_toan_thu_branches.md',
+    outputs: [
+      'C:/antgravity workplace/coboc_output/coboc_toan_thu_branches.html',
+      'C:/antgravity workplace/coboc_output/github_repo/coboc_toan_thu_branches.html'
+    ],
+    title: 'Lục Hào Cổ Bốc Thực Đoán Toàn Thư'
+  },
+  {
+    input: 'C:/antgravity workplace/coboc_output/volumes/vol01/vol01_branches.md',
+    outputs: [
+      'C:/antgravity workplace/coboc_output/vol01_branches.html',
+      'C:/antgravity workplace/coboc_output/github_repo/vol01_branches.html'
+    ],
+    title: 'Tập 1: Thông Luận Cơ Sở & Nhập Môn (Ch.I–XX)'
+  },
+  {
+    input: 'C:/antgravity workplace/coboc_output/volumes/vol02/vol02_branches.md',
+    outputs: [
+      'C:/antgravity workplace/coboc_output/vol02_branches.html',
+      'C:/antgravity workplace/coboc_output/github_repo/vol02_branches.html'
+    ],
+    title: 'Tập 2: Dịch Lý Thiên – Phần 1 (Ch.XXI–XXVII)'
+  },
+  {
+    input: 'C:/antgravity workplace/coboc_output/volumes/vol03/vol03_branches.md',
+    outputs: [
+      'C:/antgravity workplace/coboc_output/vol03_branches.html',
+      'C:/antgravity workplace/coboc_output/github_repo/vol03_branches.html'
+    ],
+    title: 'Tập 3: Dịch Lý Thiên – Phần 2 (Ch.XXVIII–XXXIV)'
+  },
+  {
+    input: 'C:/antgravity workplace/coboc_output/volumes/vol04/vol04_branches.md',
+    outputs: [
+      'C:/antgravity workplace/coboc_output/vol04_branches.html',
+      'C:/antgravity workplace/coboc_output/github_repo/vol04_branches.html'
+    ],
+    title: 'Tập 4: Tiến Giai Thiên (Ch.XXXV–XL + Giảng Nghĩa)'
+  },
+  {
+    input: 'C:/antgravity workplace/coboc_output/volumes/vol05/vol05_branches.md',
+    outputs: [
+      'C:/antgravity workplace/coboc_output/vol05_branches.html',
+      'C:/antgravity workplace/coboc_output/github_repo/vol05_branches.html'
+    ],
+    title: 'Tập 5: Chi Tiết Thiên (Ch.XLI–LVII)'
+  }
+];
+
 function compileAllMindmaps() {
   console.log('[compile_mindmap] Compiling all 3 canonical mindmaps...');
   const results = [];
@@ -124,15 +175,37 @@ function compileAllMindmaps() {
   return results;
 }
 
-module.exports = { compileMindmap, compileAllMindmaps, CANONICAL_MAPS };
+function compileCobocMindmaps() {
+  console.log('[compile_mindmap] Compiling all 6 Cổ Bốc mindmaps...');
+  const results = [];
+  for (const item of COBOC_MAPS) {
+    if (!fs.existsSync(item.input)) {
+      console.warn(`[compile_mindmap] Skip missing file: ${item.input}`);
+      continue;
+    }
+    const firstOutput = item.outputs[0];
+    const res = compileMindmap(item.input, firstOutput, item.title);
+    for (let i = 1; i < item.outputs.length; i++) {
+      fs.copyFileSync(firstOutput, item.outputs[i]);
+      console.log(`  -> Synced to ${item.outputs[i]}`);
+    }
+    results.push(res);
+  }
+  return results;
+}
+
+module.exports = { compileMindmap, compileAllMindmaps, compileCobocMindmaps, CANONICAL_MAPS, COBOC_MAPS };
 
 if (require.main === module) {
   const args = process.argv.slice(2);
-  if (args.includes('--all')) {
+  if (args.includes('--coboc')) {
+    compileCobocMindmaps();
+  } else if (args.includes('--all')) {
     compileAllMindmaps();
   } else if (args.length < 2) {
     console.error('Usage: node compile_mindmap.js <input.md> <output.html> [doc_title]');
     console.error('       node compile_mindmap.js --all');
+    console.error('       node compile_mindmap.js --coboc');
     process.exit(1);
   } else {
     compileMindmap(args[0], args[1], args[2]);

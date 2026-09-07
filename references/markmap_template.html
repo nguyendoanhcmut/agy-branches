@@ -467,12 +467,13 @@
     .desktop-hint { display: inline; }
     .mobile-hint { display: none; }
 
-    /* Mobile portrait / narrow screens (e.g. phones in portrait <= 560px) */
-    @media (max-width: 560px), (max-width: 640px) and (orientation: portrait) {
+    /* Mobile portrait / narrow screens (e.g. phones in portrait <= 640px) */
+    @media (max-width: 640px) {
       .toolbar {
         top: max(8px, env(safe-area-inset-top, 8px));
         left: max(8px, env(safe-area-inset-left, 8px));
         right: max(8px, env(safe-area-inset-right, 8px));
+        width: calc(100vw - 16px);
         max-width: calc(100vw - 16px);
         display: flex;
         flex-wrap: wrap;
@@ -486,6 +487,7 @@
       .toolbar-zoom-group {
         order: 1;
         display: inline-flex;
+        align-items: center;
         gap: 3px;
         flex-shrink: 0;
       }
@@ -495,6 +497,7 @@
       .toolbar-level-group {
         order: 2;
         display: inline-flex;
+        align-items: center;
         flex-shrink: 0;
       }
       .level-pills {
@@ -503,6 +506,7 @@
       .level-select {
         display: inline-flex;
         height: 32px;
+        max-width: 96px;
         font-size: 12px;
         font-weight: 600;
         padding: 0 4px;
@@ -510,7 +514,7 @@
       }
       #theme-toggle {
         order: 3;
-        min-width: 34px;
+        min-width: 36px;
         height: 32px;
         padding: 0 8px;
         margin-left: auto;
@@ -524,36 +528,36 @@
         order: 4;
         width: 100%;
         flex-basis: 100%;
-        height: 34px;
+        height: 36px;
         padding: 0 6px;
         gap: 4px;
         margin-top: 2px;
         box-sizing: border-box;
       }
       .search-icon {
-        width: 14px;
-        height: 14px;
+        width: 15px;
+        height: 15px;
       }
       #search-input {
         flex: 1;
-        min-width: 60px;
+        min-width: 50px;
         width: 100%;
-        font-size: 13px;
+        font-size: 16px; /* 16px prevents iOS Safari from auto-zooming viewport on focus */
       }
       .search-box:focus-within #search-input {
         width: 100%;
       }
       .search-count {
-        font-size: 10px;
+        font-size: 11px;
         padding: 2px 5px;
       }
       .search-nav-btn {
-        width: 26px;
-        height: 26px;
-        font-size: 11px;
+        min-width: 28px;
+        height: 28px;
+        font-size: 12px;
       }
       .search-clear-btn {
-        font-size: 13px;
+        font-size: 14px;
       }
       .toolbar button {
         height: 32px;
@@ -564,10 +568,10 @@
         padding: 0 6px;
       }
       #btn-fit .btn-text {
-        display: inline;
+        display: none; /* Icon only to prevent Row 1 overflow on narrow screens */
       }
       #btn-zoom-out, #btn-zoom-in {
-        min-width: 28px;
+        min-width: 30px;
         font-size: 16px;
         padding: 0 4px;
       }
@@ -578,6 +582,7 @@
         max-width: calc(100vw - 16px);
         padding: 6px 10px;
         border-radius: 6px;
+        transition: opacity 0.2s ease, background-color 0.25s ease, border-color 0.25s ease;
       }
       .title-collapse-btn {
         display: inline-flex;
@@ -591,6 +596,10 @@
       .title-bar.collapsed h1 {
         margin-bottom: 0;
       }
+      .title-bar.search-focused {
+        opacity: 0.15;
+        pointer-events: none;
+      }
       .title-bar h1 {
         font-size: 12px;
         margin-bottom: 1px;
@@ -603,15 +612,16 @@
     }
 
     /* Mobile landscape (e.g. phones rotated horizontally) */
-    @media (orientation: landscape) and (max-height: 500px) {
+    @media (orientation: landscape) and (max-height: 600px) {
       .toolbar {
         top: max(6px, env(safe-area-inset-top, 6px));
         right: max(6px, env(safe-area-inset-right, 6px));
         left: auto;
+        width: auto;
         display: inline-flex;
         flex-wrap: nowrap;
         gap: 3px;
-        padding: 3px 5px;
+        padding: 3px 6px;
         border-radius: 8px;
         max-width: calc(100vw - 12px);
       }
@@ -644,6 +654,7 @@
         height: 28px;
         font-size: 11px;
         padding: 0 2px;
+        max-width: 90px;
       }
       .search-box {
         order: unset;
@@ -655,23 +666,23 @@
         margin-top: 0;
       }
       #search-input {
-        width: 70px;
-        font-size: 11px;
+        width: 80px;
+        font-size: 12px;
       }
       .search-box:focus-within #search-input {
-        width: 100px;
+        width: 120px;
       }
       .search-count {
         font-size: 9px;
         padding: 1px 3px;
       }
       .search-nav-btn {
-        width: 18px;
+        width: 20px;
         height: 22px;
-        font-size: 9px;
+        font-size: 10px;
       }
       .search-clear-btn {
-        font-size: 11px;
+        font-size: 12px;
       }
       #theme-toggle {
         order: unset;
@@ -719,10 +730,10 @@
       </div>
       <select id="level-select" class="level-select" aria-label="Expand level" onchange="window.__setLevel(this.value)">
         <option value="1">L1: Root</option>
-        <option value="2" selected>L2: Chapters</option>
-        <option value="3">L3: Sections</option>
-        <option value="4">L4: Subsections</option>
-        <option value="5">L5: Details</option>
+        <option value="2" selected>L2: Chaps</option>
+        <option value="3">L3: Secs</option>
+        <option value="4">L4: Sub</option>
+        <option value="5">L5: All</option>
         <option value="custom" disabled hidden>Custom</option>
       </select>
     </div>
@@ -1008,13 +1019,13 @@
           .replace(/&gt;/g, '>')
           .replace(/&quot;/g, '"')
           .replace(/&#39;/g, "'")
+          .replace(/&apos;/g, "'")
           .replace(/&nbsp;/g, ' ');
       }
 
       function cleanTextForSearch(str) {
         if (!str) return '';
-        return decodeHtmlEntities(str)
-          .replace(/<[^>]*>/g, ' ')
+        return decodeHtmlEntities(str.replace(/<[^>]*>/g, ' '))
           .replace(/\s+/g, ' ')
           .trim();
       }
@@ -1028,6 +1039,19 @@
           .replace(/Đ/g, 'D');
       }
 
+      function preIndexSearchText(node) {
+        if (!node) return;
+        const text = cleanTextForSearch(node.content);
+        node._textLower = text.toLowerCase();
+        node._textNorm = removeAccents(node._textLower);
+        if (node.children && node.children.length) {
+          for (let i = 0; i < node.children.length; i++) {
+            preIndexSearchText(node.children[i]);
+          }
+        }
+      }
+      preIndexSearchText(rootData);
+
       updateHighlightClasses = function() {
         const svg = document.getElementById('markmap-svg');
         if (!svg) return;
@@ -1036,10 +1060,16 @@
 
         if (searchMatches.length === 0 || currentSearchIndex < 0) return;
 
+        const renderedMap = new Map();
+        svg.querySelectorAll('g.markmap-node').forEach(g => {
+          const path = g.getAttribute('data-path');
+          if (path) renderedMap.set(path, g);
+        });
+
         for (let i = 0; i < searchMatches.length; i++) {
           const m = searchMatches[i];
-          const elem = window.mm ? window.mm.findElement(m.node) : null;
-          const gNode = elem ? elem.g : svg.querySelector('g[data-path="' + (m.node.state && m.node.state.path) + '"]');
+          const path = m.node && m.node.state && m.node.state.path;
+          const gNode = path ? renderedMap.get(path) : null;
           if (gNode) {
             if (i === currentSearchIndex) {
               gNode.classList.add('search-active');
@@ -1142,13 +1172,13 @@
         const matches = [];
         function walk(node, ancestors) {
           if (!node) return;
-          const text = cleanTextForSearch(node.content);
-          if (text) {
-            const tLower = text.toLowerCase();
-            const tNorm = removeAccents(tLower);
-            if (tLower.includes(qLower) || tNorm.includes(qNorm)) {
-              matches.push({ node, ancestors });
-            }
+          if (node._textLower === undefined) {
+            const text = cleanTextForSearch(node.content);
+            node._textLower = text.toLowerCase();
+            node._textNorm = removeAccents(node._textLower);
+          }
+          if (node._textLower.includes(qLower) || node._textNorm.includes(qNorm)) {
+            matches.push({ node, ancestors });
           }
           if (node.children && node.children.length) {
             const nextAncestors = ancestors.concat(node);
@@ -1204,6 +1234,14 @@
       const clearBtn = document.getElementById('btn-search-clear');
 
       if (searchInput) {
+        const titleBarEl = document.getElementById('title-bar');
+        searchInput.addEventListener('focus', () => {
+          if (titleBarEl) titleBarEl.classList.add('search-focused');
+        });
+        searchInput.addEventListener('blur', () => {
+          if (titleBarEl) titleBarEl.classList.remove('search-focused');
+        });
+
         searchInput.addEventListener('input', (e) => {
           clearTimeout(searchDebounceTimer);
           searchDebounceTimer = setTimeout(() => {
@@ -1261,6 +1299,9 @@
             });
             await window.mm.renderData();
             await window.mm.fit();
+            if (typeof updateHighlightClasses === 'function') {
+              updateHighlightClasses();
+            }
           }
         }, 150);
       });
