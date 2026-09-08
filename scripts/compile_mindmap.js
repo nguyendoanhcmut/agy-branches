@@ -81,6 +81,7 @@ function compileMindmap(inputMdPath, outputHtmlPath, docTitle) {
   html = html.replace(/\{DOCUMENT_TITLE\}/g, docTitle);
   html = html.replace(/\{MINDMAP_DATA\}/g, b64Data);
 
+  fs.mkdirSync(path.dirname(outputHtmlPath), { recursive: true });
   fs.writeFileSync(outputHtmlPath, html, 'utf8');
   const tTotal = performance.now() - t0;
 
@@ -102,10 +103,10 @@ function findMarkdownFiles(dir, fileList = []) {
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name !== 'node_modules' && entry.name !== '.git') {
+      if (!entry.name.startsWith('.') && entry.name !== 'node_modules') {
         findMarkdownFiles(fullPath, fileList);
       }
-    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+    } else if (entry.isFile() && /\.md$/i.test(entry.name)) {
       fileList.push(fullPath);
     }
   }

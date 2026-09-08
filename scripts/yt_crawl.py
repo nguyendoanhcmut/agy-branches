@@ -19,7 +19,7 @@ if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
         pass
 
 
-def parse_args():
+def parse_args(args=None):
     parser = argparse.ArgumentParser(
         description="Extract flat video metadata from YouTube channels, playlists, or series using yt-dlp."
     )
@@ -30,15 +30,15 @@ def parse_args():
     parser.add_argument("--max-videos", "-m", type=int, default=None, help="Maximum number of videos to crawl")
     parser.add_argument("--include-shorts", action="store_true", default=False, help="Include YouTube Shorts (duration < 60s)")
 
-    args = parser.parse_args()
-    target_url = args.flag_url or args.url
-    target_out_dir = args.flag_output_dir or args.output_dir
+    parsed_args = parser.parse_args(args)
+    target_url = parsed_args.flag_url or parsed_args.url
+    target_out_dir = parsed_args.flag_output_dir or parsed_args.output_dir
 
     if not target_url or not target_out_dir:
         parser.print_help()
         sys.exit(1)
 
-    return target_url, target_out_dir, args.max_videos, args.include_shorts
+    return target_url, target_out_dir, parsed_args.max_videos, parsed_args.include_shorts
 
 
 def crawl_channel(url: str, out_dir: str, max_videos: int = None, include_shorts: bool = False):
@@ -58,12 +58,21 @@ def crawl_channel(url: str, out_dir: str, max_videos: int = None, include_shorts
 
     print(f"[*] Crawling metadata from: {url}")
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
+        try:
+            info = ydl.extract_info(url, download=False)
+        except Exception as err:
+            print(f"[!] yt-dlp extraction error: {err}")
+            info = None
+
         if not info:
             print("[!] No information returned by yt-dlp.")
             raw_entries = []
+        elif info.get("entries") is not None:
+            raw_entries = info["entries"]
+        elif info.get("id"):
+            raw_entries = [info]
         else:
-            raw_entries = info.get("entries", [])
+            raw_entries = []
 
     videos = []
     skipped_private = 0
@@ -83,13 +92,14 @@ def crawl_channel(url: str, out_dir: str, max_videos: int = None, include_shorts
             skipped_private += 1
             continue
 
-        # Duration handling (default: 600s if missing or null)
+        # Duration handling (default: 600s if missing, null, or non-positive)
         raw_dur = entry.get("duration")
         if raw_dur is None:
             duration = 600
         else:
             try:
-                duration = int(round(float(raw_dur)))
+                val = int(round(float(raw_dur)))
+                duration = val if val > 0 else 600
             except (ValueError, TypeError):
                 duration = 600
 
@@ -119,7 +129,7 @@ def crawl_channel(url: str, out_dir: str, max_videos: int = None, include_shorts
             "url": video_url,
         }
         if "upload_date" in entry and entry.get("upload_date"):
-            video_record["upload_date"] = entry["upload_date"]
+            video_record["upload_date"] = str(entry["upload_date"])
 
         videos.append(video_record)
 
