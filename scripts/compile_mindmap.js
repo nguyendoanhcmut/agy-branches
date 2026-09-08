@@ -93,119 +93,52 @@ function compileMindmap(inputMdPath, outputHtmlPath, docTitle) {
   return { nodeCount, katexCount, tTotal, outputHtmlPath };
 }
 
-const CANONICAL_MAPS = [
-  {
-    input: 'C:/antgravity workplace/hcmut-263/kt xu ly nuoc cap/indexes/test_branches_deep/water_treatment_subagent_deep_branches.md',
-    output: 'C:/antgravity workplace/hcmut-263/kt xu ly nuoc cap/indexes/test_branches_deep/water_treatment_subagent_deep_branches.html',
-    title: 'Kỹ thuật Xử lý Nước cấp (Water Treatment Engineering) - Subagent Deep Tree'
-  },
-  {
-    input: 'C:/antgravity workplace/hcmut-263/kt xu ly nuoc thai/indexes/test_branches_deep/wastewater_treatment_deep_branches.md',
-    output: 'C:/antgravity workplace/hcmut-263/kt xu ly nuoc thai/indexes/test_branches_deep/wastewater_treatment_deep_branches.html',
-    title: 'Kỹ thuật Xử lý Nước thải (Wastewater Treatment Engineering) - Deep Tree'
-  },
-  {
-    input: 'C:/antgravity workplace/hcmut-263/lãnh đạo/indexes/test_branches_deep/leadership_skills_subagent_deep_branches.md',
-    output: 'C:/antgravity workplace/hcmut-263/lãnh đạo/indexes/test_branches_deep/leadership_skills_subagent_deep_branches.html',
-    title: 'Kỹ Năng Lãnh Đạo (Leadership Skills) - Subagent Deep Tree'
+function findMarkdownFiles(dir, fileList = []) {
+  if (!fs.existsSync(dir)) {
+    console.warn(`[compile_mindmap] Directory does not exist: ${dir}`);
+    return fileList;
   }
-];
-
-const COBOC_MAPS = [
-  {
-    input: 'C:/antgravity workplace/coboc_output/coboc_toan_thu_branches.md',
-    outputs: [
-      'C:/antgravity workplace/coboc_output/coboc_toan_thu_branches.html',
-      'C:/antgravity workplace/coboc_output/github_repo/coboc_toan_thu_branches.html'
-    ],
-    title: 'Lục Hào Cổ Bốc Thực Đoán Toàn Thư'
-  },
-  {
-    input: 'C:/antgravity workplace/coboc_output/volumes/vol01/vol01_branches.md',
-    outputs: [
-      'C:/antgravity workplace/coboc_output/vol01_branches.html',
-      'C:/antgravity workplace/coboc_output/github_repo/vol01_branches.html'
-    ],
-    title: 'Tập 1: Thông Luận Cơ Sở & Nhập Môn (Ch.I–XX)'
-  },
-  {
-    input: 'C:/antgravity workplace/coboc_output/volumes/vol02/vol02_branches.md',
-    outputs: [
-      'C:/antgravity workplace/coboc_output/vol02_branches.html',
-      'C:/antgravity workplace/coboc_output/github_repo/vol02_branches.html'
-    ],
-    title: 'Tập 2: Dịch Lý Thiên – Phần 1 (Ch.XXI–XXVII)'
-  },
-  {
-    input: 'C:/antgravity workplace/coboc_output/volumes/vol03/vol03_branches.md',
-    outputs: [
-      'C:/antgravity workplace/coboc_output/vol03_branches.html',
-      'C:/antgravity workplace/coboc_output/github_repo/vol03_branches.html'
-    ],
-    title: 'Tập 3: Dịch Lý Thiên – Phần 2 (Ch.XXVIII–XXXIV)'
-  },
-  {
-    input: 'C:/antgravity workplace/coboc_output/volumes/vol04/vol04_branches.md',
-    outputs: [
-      'C:/antgravity workplace/coboc_output/vol04_branches.html',
-      'C:/antgravity workplace/coboc_output/github_repo/vol04_branches.html'
-    ],
-    title: 'Tập 4: Tiến Giai Thiên (Ch.XXXV–XL + Giảng Nghĩa)'
-  },
-  {
-    input: 'C:/antgravity workplace/coboc_output/volumes/vol05/vol05_branches.md',
-    outputs: [
-      'C:/antgravity workplace/coboc_output/vol05_branches.html',
-      'C:/antgravity workplace/coboc_output/github_repo/vol05_branches.html'
-    ],
-    title: 'Tập 5: Chi Tiết Thiên (Ch.XLI–LVII)'
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name !== 'node_modules' && entry.name !== '.git') {
+        findMarkdownFiles(fullPath, fileList);
+      }
+    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      fileList.push(fullPath);
+    }
   }
-];
+  return fileList;
+}
 
-function compileAllMindmaps() {
-  console.log('[compile_mindmap] Compiling all 3 canonical mindmaps...');
+function compileAllMindmaps(targetDir = '.') {
+  console.log(`[compile_mindmap] Scanning directory for Markdown files: ${targetDir}`);
+  const mdFiles = findMarkdownFiles(targetDir);
+  console.log(`[compile_mindmap] Found ${mdFiles.length} Markdown file(s)`);
   const results = [];
-  for (const m of CANONICAL_MAPS) {
-    if (fs.existsSync(m.input)) {
-      results.push(compileMindmap(m.input, m.output, m.title));
-    } else {
-      console.warn(`[compile_mindmap] Skip missing file: ${m.input}`);
+  for (const mdPath of mdFiles) {
+    const outHtmlPath = mdPath.replace(/\.md$/i, '.html');
+    try {
+      results.push(compileMindmap(mdPath, outHtmlPath));
+    } catch (err) {
+      console.error(`[compile_mindmap] Failed to compile ${mdPath}:`, err.message);
     }
   }
   return results;
 }
 
-function compileCobocMindmaps() {
-  console.log('[compile_mindmap] Compiling all 6 Cổ Bốc mindmaps...');
-  const results = [];
-  for (const item of COBOC_MAPS) {
-    if (!fs.existsSync(item.input)) {
-      console.warn(`[compile_mindmap] Skip missing file: ${item.input}`);
-      continue;
-    }
-    const firstOutput = item.outputs[0];
-    const res = compileMindmap(item.input, firstOutput, item.title);
-    for (let i = 1; i < item.outputs.length; i++) {
-      fs.copyFileSync(firstOutput, item.outputs[i]);
-      console.log(`  -> Synced to ${item.outputs[i]}`);
-    }
-    results.push(res);
-  }
-  return results;
-}
-
-module.exports = { compileMindmap, compileAllMindmaps, compileCobocMindmaps, CANONICAL_MAPS, COBOC_MAPS };
+module.exports = { compileMindmap, compileAllMindmaps };
 
 if (require.main === module) {
   const args = process.argv.slice(2);
-  if (args.includes('--coboc')) {
-    compileCobocMindmaps();
-  } else if (args.includes('--all')) {
-    compileAllMindmaps();
+  if (args.includes('--all')) {
+    const dirIdx = args.indexOf('--dir');
+    const targetDir = dirIdx !== -1 && args[dirIdx + 1] ? args[dirIdx + 1] : '.';
+    compileAllMindmaps(targetDir);
   } else if (args.length < 2) {
     console.error('Usage: node compile_mindmap.js <input.md> <output.html> [doc_title]');
-    console.error('       node compile_mindmap.js --all');
-    console.error('       node compile_mindmap.js --coboc');
+    console.error('       node compile_mindmap.js --all [--dir <directory>]');
     process.exit(1);
   } else {
     compileMindmap(args[0], args[1], args[2]);

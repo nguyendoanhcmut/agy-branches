@@ -1,25 +1,147 @@
+#!/usr/bin/env python3
+"""
+yt_crawl.py - Flat metadata crawler for YouTube channels and playlists using yt-dlp.
+Extracts video metadata (id, title, duration, view_count, url, upload_date) without downloading media.
+"""
+
 import sys
 import json
-import yt_dlp
+import argparse
 from pathlib import Path
+import yt_dlp
 
-def main():
-    if len(sys.argv) != 3:
-        sys.exit("Usage: python yt_crawl.py <channel_url> <output_dir>")
-    
-    url, out_dir = sys.argv[1], sys.argv[2]
+# Ensure Windows stdout/stderr handles UTF-8 gracefully
+if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Extract flat video metadata from YouTube channels, playlists, or series using yt-dlp."
+    )
+    parser.add_argument("url", nargs="?", default=None, help="YouTube channel, handle, or playlist URL")
+    parser.add_argument("output_dir", nargs="?", default=None, help="Output directory for channel_videos.json")
+    parser.add_argument("--url", "-u", dest="flag_url", help="YouTube channel, handle, or playlist URL")
+    parser.add_argument("--output-dir", "-o", dest="flag_output_dir", help="Output directory for channel_videos.json")
+    parser.add_argument("--max-videos", "-m", type=int, default=None, help="Maximum number of videos to crawl")
+    parser.add_argument("--include-shorts", action="store_true", default=False, help="Include YouTube Shorts (duration < 60s)")
+
+    args = parser.parse_args()
+    target_url = args.flag_url or args.url
+    target_out_dir = args.flag_output_dir or args.output_dir
+
+    if not target_url or not target_out_dir:
+        parser.print_help()
+        sys.exit(1)
+
+    return target_url, target_out_dir, args.max_videos, args.include_shorts
+
+
+def crawl_channel(url: str, out_dir: str, max_videos: int = None, include_shorts: bool = False):
     out_path = Path(out_dir) / "channel_videos.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    ydl_opts = {'extract_flat': True, 'quiet': True}
+    ydl_opts = {
+        "extract_flat": True,
+        "quiet": True,
+        "no_warnings": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android"]
+            }
+        }
+    }
 
+    print(f"[*] Crawling metadata from: {url}")
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
-        videos = [{k: e.get(k) for k in ('id', 'title', 'duration', 'view_count', 'url')} 
-                  for e in info.get('entries', [])]
+        if not info:
+            print("[!] No information returned by yt-dlp.")
+            raw_entries = []
+        else:
+            raw_entries = info.get("entries", [])
 
-    with open(out_path, 'w', encoding='utf-8') as f:
-        json.dump(videos, f, indent=2)
+    videos = []
+    skipped_private = 0
+    skipped_shorts = 0
 
-if __name__ == '__main__':
+    for entry in raw_entries:
+        if not entry or not isinstance(entry, dict):
+            continue
+
+        vid = entry.get("id")
+        if not vid:
+            continue
+
+        title = (entry.get("title") or "").strip()
+        # Filter private or deleted videos
+        if not title or title in ["[Private video]", "[Deleted video]"] or "[Private video]" in title or "[Deleted video]" in title:
+            skipped_private += 1
+            continue
+
+        # Duration handling (default: 600s if missing or null)
+        raw_dur = entry.get("duration")
+        if raw_dur is None:
+            duration = 600
+        else:
+            try:
+                duration = int(round(float(raw_dur)))
+            except (ValueError, TypeError):
+                duration = 600
+
+        # Filter shorts if not requested
+        if not include_shorts and duration < 60:
+            skipped_shorts += 1
+            continue
+
+        view_count = entry.get("view_count")
+        if view_count is not None:
+            try:
+                view_count = int(view_count)
+            except (ValueError, TypeError):
+                view_count = 0
+        else:
+            view_count = 0
+
+        video_url = entry.get("url") or f"https://youtu.be/{vid}"
+        if not str(video_url).startswith("http"):
+            video_url = f"https://youtu.be/{vid}"
+
+        video_record = {
+            "id": vid,
+            "title": title,
+            "duration": duration,
+            "view_count": view_count,
+            "url": video_url,
+        }
+        if "upload_date" in entry and entry.get("upload_date"):
+            video_record["upload_date"] = entry["upload_date"]
+
+        videos.append(video_record)
+
+        if max_videos and len(videos) >= max_videos:
+            break
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(videos, f, indent=2, ensure_ascii=False)
+
+    print(f"[*] Saved {len(videos)} videos to: {out_path}")
+    if skipped_private > 0:
+        print(f"[*] Filtered {skipped_private} private/deleted video(s)")
+    if skipped_shorts > 0:
+        print(f"[*] Filtered {skipped_shorts} short(s) (<60s)")
+
+    return videos
+
+
+def main():
+    url, out_dir, max_videos, include_shorts = parse_args()
+    crawl_channel(url, out_dir, max_videos, include_shorts)
+
+
+if __name__ == "__main__":
     main()

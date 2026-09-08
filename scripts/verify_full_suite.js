@@ -46,7 +46,7 @@ async function verifyTarget(browser, target) {
     { desc: 'Contains katex.min.js', pass: htmlContent.includes('katex.min.js') },
     { desc: 'markmap-autoloader ELIMINATED', pass: !htmlContent.includes('markmap-autoloader') },
     { desc: 'Contains initialExpandLevel: 2', pass: htmlContent.includes('initialExpandLevel: 2') },
-    { desc: 'Contains maxWidth: 420', pass: htmlContent.includes('maxWidth: 420') },
+    { desc: 'Contains responsive maxWidth', pass: htmlContent.includes('responsiveMaxWidth') || htmlContent.includes('maxWidth: 420') },
     { desc: 'Contains #theme-toggle button', pass: htmlContent.includes('id="theme-toggle"') },
     { desc: 'Contains .icon-sun and .icon-moon SVGs', pass: htmlContent.includes('icon-sun') && htmlContent.includes('icon-moon') },
     { desc: 'Contains localStorage theme persistence', pass: htmlContent.includes("localStorage.getItem('markmap-theme')") },
