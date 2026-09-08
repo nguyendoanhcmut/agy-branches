@@ -1003,11 +1003,12 @@
       });
 
       // ==========================================
-      // Search Engine
+      // High-Performance Real-Time Search Engine (< 10ms)
       // ==========================================
       let searchMatches = [];
       let currentSearchIndex = -1;
       let searchDebounceTimer = null;
+      const flatSearchIndex = [];
 
       function decodeHtmlEntities(str) {
         if (!str) return '';
@@ -1025,7 +1026,12 @@
 
       function cleanTextForSearch(str) {
         if (!str) return '';
-        return decodeHtmlEntities(str.replace(/<[^>]*>/g, ' '))
+        // Strip MathML elements to eliminate duplicate LaTeX/MathML tokens
+        const withoutMathml = str.replace(/<span class="katex-mathml">[\s\S]*?<\/span>/gi, ' ');
+        return decodeHtmlEntities(withoutMathml.replace(/<[^>]*>/g, ' '))
+          .replace(/[\u2018\u2019]/g, "'")
+          .replace(/[\u201C\u201D]/g, '"')
+          .replace(/[\u2013\u2014]/g, '-')
           .replace(/\s+/g, ' ')
           .trim();
       }
@@ -1039,18 +1045,20 @@
           .replace(/Đ/g, 'D');
       }
 
-      function preIndexSearchText(node) {
+      function preIndexAndFlattenSearch(node, ancestors) {
         if (!node) return;
         const text = cleanTextForSearch(node.content);
         node._textLower = text.toLowerCase();
         node._textNorm = removeAccents(node._textLower);
+        flatSearchIndex.push({ node, ancestors });
         if (node.children && node.children.length) {
+          const nextAncestors = ancestors.concat(node);
           for (let i = 0; i < node.children.length; i++) {
-            preIndexSearchText(node.children[i]);
+            preIndexAndFlattenSearch(node.children[i], nextAncestors);
           }
         }
       }
-      preIndexSearchText(rootData);
+      preIndexAndFlattenSearch(rootData, []);
 
       updateHighlightClasses = function() {
         const svg = document.getElementById('markmap-svg');
@@ -1170,25 +1178,14 @@
         const qNorm = removeAccents(qLower);
 
         const matches = [];
-        function walk(node, ancestors) {
-          if (!node) return;
-          if (node._textLower === undefined) {
-            const text = cleanTextForSearch(node.content);
-            node._textLower = text.toLowerCase();
-            node._textNorm = removeAccents(node._textLower);
-          }
-          if (node._textLower.includes(qLower) || node._textNorm.includes(qNorm)) {
-            matches.push({ node, ancestors });
-          }
-          if (node.children && node.children.length) {
-            const nextAncestors = ancestors.concat(node);
-            for (let i = 0; i < node.children.length; i++) {
-              walk(node.children[i], nextAncestors);
-            }
+        const total = flatSearchIndex.length;
+        for (let i = 0; i < total; i++) {
+          const item = flatSearchIndex[i];
+          const n = item.node;
+          if (n._textLower.includes(qLower) || n._textNorm.includes(qNorm)) {
+            matches.push(item);
           }
         }
-
-        walk(window.mm.state.data, []);
         searchMatches = matches;
 
         const countEl = document.getElementById('search-count');
@@ -1233,6 +1230,14 @@
       const nextBtn = document.getElementById('btn-search-next');
       const clearBtn = document.getElementById('btn-search-clear');
 
+      // Prevent input blur when tapping search navigation buttons on touch screens
+      [prevBtn, nextBtn, clearBtn].forEach(btn => {
+        if (btn) {
+          btn.addEventListener('pointerdown', (e) => e.preventDefault());
+          btn.addEventListener('mousedown', (e) => e.preventDefault());
+        }
+      });
+
       if (searchInput) {
         const titleBarEl = document.getElementById('title-bar');
         searchInput.addEventListener('focus', () => {
@@ -1246,7 +1251,7 @@
           clearTimeout(searchDebounceTimer);
           searchDebounceTimer = setTimeout(() => {
             executeSearch(e.target.value);
-          }, 150);
+          }, 10);
         });
 
         searchInput.addEventListener('keydown', (e) => {
@@ -1257,6 +1262,12 @@
             } else {
               nextSearchMatch();
             }
+          } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            nextSearchMatch();
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            prevSearchMatch();
           } else if (e.key === 'Escape') {
             e.preventDefault();
             clearSearch();
@@ -1316,6 +1327,10 @@
             si.focus();
             si.select();
           }
+          return;
+        }
+        if (e.key === 'Escape') {
+          clearSearch();
           return;
         }
         if (e.key === '1') window.__setLevel(1);

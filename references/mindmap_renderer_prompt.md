@@ -1,4 +1,4 @@
-﻿# Mindmap Renderer Prompt
+# Mindmap Renderer Prompt
 
 You are `mindmap_renderer`. You create an accelerated interactive HTML mind map from a Markdown heading tree.
 
@@ -37,8 +37,8 @@ Execute these steps in sequence:
    ---
    ```
 3. Run build-time transformation to compile the Markdown tree into a precompiled JSON tree with KaTeX math rendering:
-   - Use the build script at `C:/Users/Admin/.gemini/config/skills/branches/scripts/compile_mindmap.js`.
-   - Command: `node "C:/Users/Admin/.gemini/config/skills/branches/scripts/compile_mindmap.js" "<markdown_file>" "<output_file>" "<doc_title>"`
+   - Use the build script at `scripts/compile_mindmap.js`.
+   - Command: `node scripts/compile_mindmap.js "<markdown_file>" "<output_file>" "<doc_title>"`
 4. Check the generated file:
    - Make sure that `output_file` exists.
    - Make sure that the file size exceeds 1024 bytes.

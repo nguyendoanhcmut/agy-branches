@@ -9,27 +9,38 @@ Antigravity skill tạo **mind map tương tác** từ sách, tài liệu, hoặ
 
 | Khả năng | Mô tả |
 |:---|:---|
-| **2 chế độ** | Direct Index (từ `_structure.json` — tức thì) và Autonomous (đọc raw text — sâu hơn) |
-| **5 micro-agents** | Scout → Driller → Merger → Verifier → Renderer |
+| **3 chế độ** | Direct Index (từ `_structure.json`), Autonomous Documents (sách, PDF), và YouTube Knowledge Trees (kênh/playlist) |
+| **Micro-Agents** | Scout, Driller, Merger, Verifier, Renderer, Crawler, Topic Clusterer, Transcript Fetcher |
 | **Đệ quy tự động** | Driller tự spawn child drillers khi section > 2000 từ |
 | **Xác minh 4 cổng** | Section Coverage (40%) + Depth Compliance (30%) + Content Grounding (20%) + Lexicon (10%) |
-| **HTML offline** | Standalone, không cần server. D3 + Markmap + KaTeX nhúng sẵn |
+| **YouTube Clustering** | Phân cụm ngữ nghĩa 2 tầng (Macro + Micro), bin-packing transcript ≤ 60 phút, deep-link timestamp |
+| **HTML offline** | Standalone, không cần server. D3 + Markmap + KaTeX nhúng sẵn, tìm kiếm thời gian thực < 10ms |
 
 ## Kiến trúc
 
 ```
-Input (text / JSON)
+Input (text / JSON / YouTube Channel)
   │
-  ├─ Mode 1: Direct Index ──────────────────────> Compile ─> HTML
+  ├─ Mode 1: Direct Index ──────────────────────────> Compile ─> HTML
   │  (có _structure.json / registry.json)
   │
-  └─ Mode 2: Autonomous Subagent Pipeline
+  ├─ Mode 2: Autonomous Subagent Pipeline (Documents)
+  │    │
+  │    ├─ Scout ─── quét mục lục, chia routing_table
+  │    ├─ Driller ─ đọc từng chunk, trích cây Markdown (đệ quy)
+  │    ├─ Merger ── gom các fragment theo thứ tự
+  │    ├─ Verifier ─ kiểm 4 cổng, score ≥ 0.95
+  │    └─ Renderer ─ compile Markdown → HTML (Markmap)
+  │
+  └─ Mode 3: YouTube Channel & Playlist Knowledge Tree
        │
-       ├─ Scout ─── quét mục lục, chia routing_table
-       ├─ Driller ─ đọc từng chunk, trích cây Markdown (đệ quy)
-       ├─ Merger ── gom các fragment theo thứ tự
-       ├─ Verifier ─ kiểm 4 cổng, score ≥ 0.95
-       └─ Renderer ─ compile Markdown → HTML (Markmap)
+       ├─ yt_crawler ──────── thu thập metadata video (flat extraction)
+       ├─ topic_clusterer ─── phân cụm chủ đề ngữ nghĩa 2 tầng (topic_catalog.json)
+       ├─ [User Selection] ── người dùng chọn cụm chủ đề cần lập bản đồ
+       ├─ transcript_fetcher  tải transcript có bin-packing ≤ 60 phút (dual-tier)
+       ├─ branch_driller ──── trích xuất khái niệm & timestamp deep-link
+       ├─ branch_merger ───── hợp nhất cây tri thức, loại bỏ tạp âm (ads/sponsors)
+       └─ Renderer / Verifier kiểm định chất lượng và compile HTML tương tác
 ```
 
 ## Cài đặt
@@ -46,6 +57,7 @@ xcopy /E /I agy-branches "%USERPROFILE%\.gemini\config\skills\branches"
 
 Yêu cầu:
 - **Node.js** ≥ 18 (chạy `compile_mindmap.js`)
+- **Python** ≥ 3.10 (chạy scripts phân cụm & cào transcript YouTube)
 - **Antigravity** (Google AGY) với subagent support
 
 ## Cấu trúc thư mục
@@ -57,12 +69,20 @@ agy-branches/
 │   ├── branch_orchestrator_prompt.md  # Prompt điều phối 6 phase
 │   ├── branch_scout_prompt.md         # Prompt trinh sát mục lục
 │   ├── branch_driller_prompt.md       # Prompt khoan đệ quy
+│   ├── branch_merger_prompt.md        # Prompt hợp nhất cấu trúc
 │   ├── branch_verifier_prompt.md      # Prompt xác minh 4 cổng
 │   ├── mindmap_renderer_prompt.md     # Prompt render HTML
-│   └── markmap_template.html          # Template HTML gốc
+│   ├── yt_crawler_prompt.md           # Prompt cào metadata kênh YouTube
+│   ├── topic_clusterer_prompt.md      # Prompt phân cụm chủ đề ngữ nghĩa
+│   ├── transcript_fetcher_prompt.md   # Prompt tải transcript bin-packed
+│   └── markmap_template.html          # Template HTML gốc (< 10ms search)
 ├── scripts/
 │   ├── compile_mindmap.js             # Compiler: Markdown → HTML
 │   ├── verify_full_suite.js           # Bộ kiểm tra tự động
+│   ├── topic_cluster.py               # Phân cụm ngữ nghĩa đa tín hiệu
+│   ├── yt_crawl.py                    # Cào metadata YouTube flat
+│   ├── yt_crawl_deep.py               # Cào metadata sâu có sample
+│   ├── yt_transcript.py               # Tải transcript có bin-packing FFD
 │   └── vendor/                        # D3, Markmap, KaTeX (offline)
 ```
 

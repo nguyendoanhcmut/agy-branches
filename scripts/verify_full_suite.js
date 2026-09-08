@@ -1,4 +1,14 @@
-﻿const puppeteer = require('C:/Users/Admin/AppData/Roaming/npm/node_modules/md-to-pdf/node_modules/puppeteer');
+let puppeteer;
+try {
+  puppeteer = require('puppeteer');
+} catch (e) {
+  try {
+    const fallbackPath = require('path').join(process.env.APPDATA || '', 'npm/node_modules/md-to-pdf/node_modules/puppeteer');
+    puppeteer = require(fallbackPath);
+  } catch (e2) {
+    console.error('Puppeteer not found. Please install puppeteer via npm.');
+  }
+}
 const fs = require('fs');
 const path = require('path');
 
